@@ -221,7 +221,7 @@
             return () => {
                 clearInterval(interval)
             }
-        })
+        }, [])
 
         const currentDay = getDayOfTheWeek(gameTime)
         const currentSlot = getSlot(gameTime)
