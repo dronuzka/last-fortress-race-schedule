@@ -1,0 +1,275 @@
+<meta charset="UTF-8" />
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td,
+    th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+<script type="module">
+    import { h, Component, render } from 'https://esm.sh/preact';
+    import { useState, useEffect } from 'https://esm.sh/preact/hooks';
+
+    const Days = {
+        Monday: 0,
+        Tuesday: 1,
+        Wednesday: 2,
+        Thursday: 3,
+        Friday: 4,
+        Saturday: 5,
+        Sunday: 6
+    }
+
+    const Slots = {
+        First: 0,
+        Second: 1,
+        Third: 2,
+        Fourth: 3
+    }
+
+    const Tasks = {
+        Gathering: "Gathering",
+        Trading: "Trading",
+        KillMutatedZombi: "Killing Mutated Zombies",
+        KillZombi: "Killing Zombies",
+        KillSoldiers: "Killing Soldiers"
+    }
+
+    const Rewards = {
+        Recruitment: "Recruitment",
+        Medals: "Medals",
+        Coins: "Memento Coins",
+        Gears: "Gears"
+    }
+
+    const Schedule = []
+    function addToSchedule(day, slot, task, reward) {
+        Schedule.push({ day, slot, task, reward })
+    }
+
+    function formatDay(day) {
+        switch (day) {
+            case Days.Monday: return "Monday"
+            case Days.Tuesday: return "Tuesday"
+            case Days.Wednesday: return "Wednesday"
+            case Days.Thursday: return "Thursday"
+            case Days.Friday: return "Friday"
+            case Days.Saturday: return "Saturday"
+            case Days.Sunday: return "Sunday"
+        }
+    }
+
+    addToSchedule(Days.Monday, Slots.First, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Monday, Slots.Second, Tasks.Trading, Rewards.Medals)
+    addToSchedule(Days.Monday, Slots.Third, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Monday, Slots.Fourth, Tasks.KillZombi, Rewards.Medals)
+
+    addToSchedule(Days.Tuesday, Slots.First, Tasks.KillZombi, Rewards.Medals)
+    addToSchedule(Days.Tuesday, Slots.Second, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Tuesday, Slots.Third, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Tuesday, Slots.Fourth, Tasks.Trading, Rewards.Medals)
+
+    addToSchedule(Days.Wednesday, Slots.First, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Wednesday, Slots.Second, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Wednesday, Slots.Third, Tasks.Trading, Rewards.Medals)
+    addToSchedule(Days.Wednesday, Slots.Fourth, Tasks.KillZombi, Rewards.Medals)
+
+    addToSchedule(Days.Thursday, Slots.First, Tasks.Trading, Rewards.Medals)
+    addToSchedule(Days.Thursday, Slots.Second, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Thursday, Slots.Third, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Thursday, Slots.Fourth, Tasks.KillZombi, Rewards.Medals)
+
+    addToSchedule(Days.Friday, Slots.First, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Friday, Slots.Second, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Friday, Slots.Third, Tasks.KillZombi, Rewards.Medals)
+    addToSchedule(Days.Friday, Slots.Fourth, Tasks.Trading, Rewards.Medals)
+
+    addToSchedule(Days.Saturday, Slots.First, Tasks.KillSoldiers, Rewards.Gears)
+    addToSchedule(Days.Saturday, Slots.Second, Tasks.KillSoldiers, Rewards.Coins)
+    addToSchedule(Days.Saturday, Slots.Third, Tasks.KillSoldiers, Rewards.Gears)
+    addToSchedule(Days.Saturday, Slots.Fourth, Tasks.KillSoldiers, Rewards.Coins)
+
+    addToSchedule(Days.Sunday, Slots.First, Tasks.KillSoldiers, Rewards.Coins)
+    addToSchedule(Days.Sunday, Slots.Second, Tasks.KillSoldiers, Rewards.Gears)
+    addToSchedule(Days.Sunday, Slots.Third, Tasks.KillSoldiers, Rewards.Coins)
+    addToSchedule(Days.Sunday, Slots.Fourth, Tasks.KillSoldiers, Rewards.Gears)
+
+    function getGameTime() {
+        return timeToGameTime(new Date());
+    }
+
+    function timeToGameTime(localDate) {
+        const offset = -2 // Game is UTC(-2)
+        const utcTime = localDate.getTime() + (localDate.getTimezoneOffset() * 60000)
+        const gameTime = utcTime + (3600000 * offset)
+        const gameDate = new Date(gameTime);
+        return gameDate;
+    }
+
+    function gameTimeToTime(gameTime) {
+        const offset = -2 // Game is UTC(-2)
+        const utcTime = gameTime.getTime() - 3600000 * offset
+        const localTime = utcTime - (gameTime.getTimezoneOffset() * 60000)
+        return new Date(localTime)
+    }
+
+    function getDayOfTheWeek(gameDate) {
+        switch (gameDate.getDay()) {
+            case 0: return Days.Sunday
+            case 1: return Days.Monday
+            case 2: return Days.Tuesday
+            case 3: return Days.Wednesday
+            case 4: return Days.Thursday
+            case 5: return Days.Friday
+            case 6: return Days.Saturday
+        }
+    }
+
+    function getSlot(gameDate) {
+        const hours = gameDate.getHours()
+        if (hours < 6) return Slots.First
+        if (hours < 12) return Slots.Second
+        if (hours < 18) return Slots.Third
+        return Slots.Fourth
+    }
+
+    function secondsToHMS(value) {
+        const seconds = value % 60
+        value = (value - seconds) / 60
+        const minutes = value % 60
+        value = (value - minutes) / 60
+        const hours = value
+        return [hours, minutes, seconds]
+    }
+
+    function getElapsedTimeInSeconds(gameTime) {
+        const hours = gameTime.getHours() % 6
+        const minutes = gameTime.getMinutes()
+        const seconds = gameTime.getSeconds()
+        return hours * 60 * 60 + minutes * 60 + seconds
+    }
+
+    function getFromStartOfDayInSeconds(gameTime) {
+        const hours = gameTime.getHours()
+        const minutes = gameTime.getMinutes()
+        const seconds = gameTime.getSeconds()
+        return hours * 60 * 60 + minutes * 60 + seconds
+    }
+
+    function getRemainingTime(gameTime) {
+        const elapsed = getElapsedTimeInSeconds(gameTime)
+        const remaing = 6 * 60 * 60 - elapsed
+
+        return secondsToHMS(remaing)
+    }
+
+    const MSECONDS_IN_DAY = 24 * 60 * 60 * 1000
+    const MSECONDS_IN_HOUR = 60 * 60 * 1000
+
+    function getMondayStartDate(gameDate) {
+        let time = gameDate.getTime()
+
+        switch (gameDate.getDay()) {
+            case 1: time -= 0 * MSECONDS_IN_DAY; break; // Days.Monday
+            case 2: time -= 1 * MSECONDS_IN_DAY; break; // Days.Tuesday
+            case 3: time -= 2 * MSECONDS_IN_DAY; break; // Days.Wednesday
+            case 4: time -= 3 * MSECONDS_IN_DAY; break; // Days.Thursday
+            case 5: time -= 4 * MSECONDS_IN_DAY; break; // Days.Friday
+            case 6: time -= 5 * MSECONDS_IN_DAY; break; // Days.Saturday
+            case 0: time -= 6 * MSECONDS_IN_DAY; break; // Days.Sunday
+        }
+
+        time -= gameDate.getHours() * 60 * 60 * 1000
+        time -= gameDate.getMinutes() * 60 * 1000
+        time -= gameDate.getSeconds() * 1000
+
+        //time -= 1000
+
+        return new Date(time)
+    }
+
+    function formatHMS([hours, minutes, seconds]) {
+        return [
+            hours,
+            `${minutes}`.padStart(2, "0"),
+            `${seconds}`.padStart(2, "0")
+        ].join(":")
+    }
+
+    function formatDate(date) {
+        return `${date.getDate()}.${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
+    }
+
+    function App(props) {
+        const [gameTime, setGameTime] = useState(getGameTime())
+
+        useEffect(() => {
+            const interval = setInterval(() => {
+                setGameTime(getGameTime())
+            }, 1000)
+            return () => {
+                clearInterval(interval)
+            }
+        })
+
+        const currentDay = getDayOfTheWeek(gameTime)
+        const currentSlot = getSlot(gameTime)
+        const remaing = getRemainingTime(gameTime)
+
+        const mondayStartOfTheDay = getMondayStartDate(gameTime)
+
+        return h('div', {}, [
+            h("div", null, gameTime.toLocaleString("Ru-ru")),
+            //h("div", null, mondayStartOfTheDay.toLocaleString()),
+            //h("span", null, gameTimeToTime(gameTime).toLocaleString()),
+            h('table', null, [
+                h("tr", null, [
+                    h("th", null, "Day"),
+                    h("th", null, ""),
+                    h("th", null, "Slot"),
+                    h("th", null, "Mission"),
+                    h("th", null, "Reward"),
+                ]),
+                ...Schedule.map(function ({ day, slot, task, reward }) {
+                    const isActive = slot === currentSlot && day === currentDay
+                    const isToday = day === currentDay
+                    const isOver = day < currentDay || ((day === currentDay) && (slot < currentSlot))
+                    const isFutureToday = isToday && slot > currentSlot
+                    const isFutureNextDays = day > currentDay
+                    const style = { background: isActive ? "green" : undefined }
+
+                    const waitingTime = secondsToHMS(slot * 6 * 60 * 60 - getFromStartOfDayInSeconds(gameTime))
+                    const startGameDate = new Date(mondayStartOfTheDay.getTime() + day * MSECONDS_IN_DAY + slot * 6 * MSECONDS_IN_HOUR)
+
+                    return h("tr", { style }, [
+                        h("td", null, formatDay(day)),
+                        h("td", null, [
+                            isOver ? "Is over" : null,
+                            isActive ? "Remainig time: " + formatHMS(remaing) : null,
+                            isFutureToday ? "Starts in: " + formatHMS(waitingTime) : null,
+                            isFutureNextDays ? formatDate(gameTimeToTime(startGameDate)) : null
+                        ]),
+                        h("td", null, slot + 1),
+                        h("td", null, task),
+                        h("td", null, reward),
+                    ])
+                })
+            ]),
+
+            h("div", null, "By: [SE1] FeanorX (Server : 607)")
+        ]);
+    }
+
+    render(h(App), document.body);
+</script>
