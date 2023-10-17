@@ -230,7 +230,7 @@
         const mondayStartOfTheDay = getMondayStartDate(gameTime)
 
         return h('div', {}, [
-            h("div", null, gameTime.toLocaleString("Ru-ru")),
+            h("div", null, ["Игровое время: ", gameTime.toLocaleString("Ru-ru")]),
             //h("div", null, mondayStartOfTheDay.toLocaleString()),
             //h("span", null, gameTimeToTime(gameTime).toLocaleString()),
             h('table', null, [
