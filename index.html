@@ -60,13 +60,13 @@
 
     function formatDay(day) {
         switch (day) {
-            case Days.Monday: return "Понедельник"
-            case Days.Tuesday: return "Вторник"
-            case Days.Wednesday: return "Среда"
-            case Days.Thursday: return "Четверг"
-            case Days.Friday: return "Пятница"
-            case Days.Saturday: return "Суббота"
-            case Days.Sunday: return "Воскресенье"
+            case Days.Monday: return "Пн"
+            case Days.Tuesday: return "Вт"
+            case Days.Wednesday: return "Ср"
+            case Days.Thursday: return "Чт"
+            case Days.Friday: return "Пт"
+            case Days.Saturday: return "Сб"
+            case Days.Sunday: return "Вс"
         }
     }
 
@@ -208,7 +208,14 @@
     }
 
     function formatDate(date) {
-        return `${date.getDate()}.${date.getMonth() + 1} в ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
+        return `${date.getDate()}.${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
+    }
+
+    function getTaskStatus(currentTime, timerTime, startTime, endTime) {
+        if (currentTime < timerTime) return +2
+        if (currentTime < startTime) return +1
+        if (currentTime > endTime) return -1
+        return 0
     }
 
     function App(props) {
@@ -221,46 +228,52 @@
             return () => {
                 clearInterval(interval)
             }
-        }, [])
+        })
 
         const currentDay = getDayOfTheWeek(gameTime)
         const currentSlot = getSlot(gameTime)
         const remaing = getRemainingTime(gameTime)
 
         const mondayStartOfTheDay = getMondayStartDate(gameTime)
+        const secondsFromStartOfTheDay = getFromStartOfDayInSeconds(gameTime)
+        const secondsFromStartOfTheWeek = secondsFromStartOfTheDay + currentDay * 24 * 60 * 60
 
         return h('div', {}, [
-            h("div", null, ["Игровое время: ", gameTime.toLocaleString("Ru-ru")]),
+            h("div", null, ["Game (server) time: ", gameTime.toLocaleString("Ru-ru")]),
             //h("div", null, mondayStartOfTheDay.toLocaleString()),
             //h("span", null, gameTimeToTime(gameTime).toLocaleString()),
             h('table', null, [
                 h("tr", null, [
                     h("th", null, "День"),
                     h("th", null, ""),
-                    h("th", null, "Слот"),
+                    //h("th", null, "Слот"),
                     h("th", null, "Задание"),
                     h("th", null, "Награда"),
                 ]),
                 ...Schedule.map(function ({ day, slot, task, reward }) {
-                    const isActive = slot === currentSlot && day === currentDay
-                    const isToday = day === currentDay
-                    const isOver = day < currentDay || ((day === currentDay) && (slot < currentSlot))
-                    const isFutureToday = isToday && slot > currentSlot
-                    const isFutureNextDays = day > currentDay
-                    const style = { background: isActive ? "green" : undefined }
+                    const taskShowTimerFromStartOfTheWeek = day * 24 * 60 * 60 + (slot-3) * 6 * 60 * 60
+                    const taskStartFromStartOfTheWeek     = day * 24 * 60 * 60 +  slot    * 6 * 60 * 60
+                    const taskEndFromStartOfTheWeek       = day * 24 * 60 * 60 + (slot+1) * 6 * 60 * 60
+                    
+                    const status = getTaskStatus(secondsFromStartOfTheWeek, taskShowTimerFromStartOfTheWeek, taskStartFromStartOfTheWeek, taskEndFromStartOfTheWeek)
+                    
+                    const isActive = status === 0
+                    const isOver = status === -1
+                    const isFutureToday = status === 1
+                    const isFutureNextDays = status === 2
 
-                    const waitingTime = secondsToHMS(slot * 6 * 60 * 60 - getFromStartOfDayInSeconds(gameTime))
-                    const startGameDate = new Date(mondayStartOfTheDay.getTime() + day * MSECONDS_IN_DAY + slot * 6 * MSECONDS_IN_HOUR)
+                    const waitingTime = secondsToHMS(taskStartFromStartOfTheWeek - secondsFromStartOfTheWeek)
+                    const startGameDate = new Date(mondayStartOfTheDay.getTime() + taskStartFromStartOfTheWeek * 1000)
 
-                    return h("tr", { style }, [
-                        h("td", null, formatDay(day)),
+                    return h("tr", { style: { background: isActive ? "green" : undefined } }, [
+                        h("td", null, formatDay(day) + `${status}`),
                         h("td", null, [
-                            isOver ? "Закончилось" : null,
+                            isOver ? "Завершено" : null,
                             isActive ? "Закончится через " + formatHMS(remaing) : null,
                             isFutureToday ? "Начнется через " + formatHMS(waitingTime) : null,
                             isFutureNextDays ? formatDate(gameTimeToTime(startGameDate)) : null
                         ]),
-                        h("td", null, slot + 1),
+                        //h("td", null, slot + 1),
                         h("td", null, task),
                         h("td", null, reward),
                     ])
