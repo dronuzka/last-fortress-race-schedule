@@ -266,7 +266,7 @@
                     const startGameDate = new Date(mondayStartOfTheDay.getTime() + taskStartFromStartOfTheWeek * 1000)
 
                     return h("tr", { style: { background: isActive ? "green" : undefined } }, [
-                        h("td", null, formatDay(day) + `${status}`),
+                        h("td", null, formatDay(day)),
                         h("td", null, [
                             isOver ? "Завершено" : null,
                             isActive ? "Закончится через " + formatHMS(remaing) : null,
