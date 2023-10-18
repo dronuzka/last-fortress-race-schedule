@@ -39,11 +39,11 @@
     }
 
     const Tasks = {
-        Gathering: "Speedups, Gathering",
-        Trading: "Speedups, Trading",
-        KillMutatedZombi: "Speedups, Killing Mutated Zombies",
-        KillZombi: "Speedups, Killing Zombies",
-        KillSoldiers: "Speedups, Killing Soldiers"
+        Gathering: "Gathering",
+        Trading: "Trading",
+        KillMutatedZombi: "Killing Mutated Zombies",
+        KillZombi: "Killing Zombies",
+        KillSoldiers: "Killing Soldiers"
     }
 
     const Rewards = {
@@ -60,13 +60,13 @@
 
     function formatDay(day) {
         switch (day) {
-            case Days.Monday: return "Monday"
-            case Days.Tuesday: return "Tuesday"
-            case Days.Wednesday: return "Wednesday"
-            case Days.Thursday: return "Thursday"
-            case Days.Friday: return "Friday"
-            case Days.Saturday: return "Saturday"
-            case Days.Sunday: return "Sunday"
+            case Days.Monday: return "Mon"
+            case Days.Tuesday: return "Tue"
+            case Days.Wednesday: return "Wed"
+            case Days.Thursday: return "Thu"
+            case Days.Friday: return "Fri"
+            case Days.Saturday: return "Sat"
+            case Days.Sunday: return "Sun"
         }
     }
 
@@ -211,6 +211,13 @@
         return `${date.getDate()}.${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
     }
 
+    function getTaskStatus(currentTime, timerTime, startTime, endTime) {
+        if (currentTime < timerTime) return +2
+        if (currentTime < startTime) return +1
+        if (currentTime > endTime) return -1
+        return 0
+    }
+
     function App(props) {
         const [gameTime, setGameTime] = useState(getGameTime())
 
@@ -221,13 +228,15 @@
             return () => {
                 clearInterval(interval)
             }
-        }, [])
+        })
 
         const currentDay = getDayOfTheWeek(gameTime)
         const currentSlot = getSlot(gameTime)
         const remaing = getRemainingTime(gameTime)
 
         const mondayStartOfTheDay = getMondayStartDate(gameTime)
+        const secondsFromStartOfTheDay = getFromStartOfDayInSeconds(gameTime)
+        const secondsFromStartOfTheWeek = secondsFromStartOfTheDay + currentDay * 24 * 60 * 60
 
         return h('div', {}, [
             h("div", null, ["Game (server) time: ", gameTime.toLocaleString("Ru-ru")]),
@@ -237,30 +246,34 @@
                 h("tr", null, [
                     h("th", null, "Day"),
                     h("th", null, ""),
-                    h("th", null, "Slot"),
+                    //h("th", null, "Slot"),
                     h("th", null, "Mission"),
                     h("th", null, "Reward"),
                 ]),
                 ...Schedule.map(function ({ day, slot, task, reward }) {
-                    const isActive = slot === currentSlot && day === currentDay
-                    const isToday = day === currentDay
-                    const isOver = day < currentDay || ((day === currentDay) && (slot < currentSlot))
-                    const isFutureToday = isToday && slot > currentSlot
-                    const isFutureNextDays = day > currentDay
-                    const style = { background: isActive ? "green" : undefined }
+                    const taskShowTimerFromStartOfTheWeek = day * 24 * 60 * 60 + (slot-3) * 6 * 60 * 60
+                    const taskStartFromStartOfTheWeek     = day * 24 * 60 * 60 +  slot    * 6 * 60 * 60
+                    const taskEndFromStartOfTheWeek       = day * 24 * 60 * 60 + (slot+1) * 6 * 60 * 60
+                    
+                    const status = getTaskStatus(secondsFromStartOfTheWeek, taskShowTimerFromStartOfTheWeek, taskStartFromStartOfTheWeek, taskEndFromStartOfTheWeek)
+                    
+                    const isActive = status === 0
+                    const isOver = status === -1
+                    const isFutureToday = status === 1
+                    const isFutureNextDays = status === 2
 
-                    const waitingTime = secondsToHMS(slot * 6 * 60 * 60 - getFromStartOfDayInSeconds(gameTime))
-                    const startGameDate = new Date(mondayStartOfTheDay.getTime() + day * MSECONDS_IN_DAY + slot * 6 * MSECONDS_IN_HOUR)
+                    const waitingTime = secondsToHMS(taskStartFromStartOfTheWeek - secondsFromStartOfTheWeek)
+                    const startGameDate = new Date(mondayStartOfTheDay.getTime() + taskStartFromStartOfTheWeek * 1000)
 
-                    return h("tr", { style }, [
-                        h("td", null, formatDay(day)),
+                    return h("tr", { style: { background: isActive ? "green" : undefined } }, [
+                        h("td", null, formatDay(day) + `${status}`),
                         h("td", null, [
                             isOver ? "Is over" : null,
                             isActive ? "Remainig time: " + formatHMS(remaing) : null,
                             isFutureToday ? "Starts in: " + formatHMS(waitingTime) : null,
                             isFutureNextDays ? formatDate(gameTimeToTime(startGameDate)) : null
                         ]),
-                        h("td", null, slot + 1),
+                        //h("td", null, slot + 1),
                         h("td", null, task),
                         h("td", null, reward),
                     ])
