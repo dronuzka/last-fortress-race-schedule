@@ -1,0 +1,391 @@
+<meta charset="UTF-8" />
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td,
+    th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #00000010;
+    }
+</style>
+<script type="module">
+    import { h, Component, render } from 'https://esm.sh/preact';
+    import { useState, useEffect } from 'https://esm.sh/preact/hooks';
+
+    const Days = {
+        Monday: 0,
+        Tuesday: 1,
+        Wednesday: 2,
+        Thursday: 3,
+        Friday: 4,
+        Saturday: 5,
+        Sunday: 6
+    }
+
+    const Slots = {
+        First: 0,
+        Second: 1,
+        Third: 2,
+        Fourth: 3
+    }
+  
+    const Tasks = {
+        Gathering: "Gathering",
+        Trading: "Trading",
+        KillMutatedZombi: "Killing Mutated Zombies",
+        KillZombi: "Killing Zombies",
+        KillSoldiers: "Killing Soldiers"
+    }
+
+    const Rewards = {
+        Recruitment: "Recruitment",
+        Medals: "Medals",
+        Coins: "Memento Coins",
+        Gears: "Gears"
+    }
+
+    const Schedule = []
+    function addToSchedule(day, slot, task, reward) {
+        const taskShowTimerFromStartOfTheWeek = day * 24 * 60 * 60 + (slot - 3) * 6 * 60 * 60
+        const taskStartFromStartOfTheWeek = day * 24 * 60 * 60 + slot * 6 * 60 * 60
+        const taskEndFromStartOfTheWeek = day * 24 * 60 * 60 + (slot + 1) * 6 * 60 * 60
+
+        Schedule.push({ day, slot, task, reward, taskShowTimerFromStartOfTheWeek, taskStartFromStartOfTheWeek, taskEndFromStartOfTheWeek })
+    }
+
+    function formatDay(day) {
+        switch (day) {
+            case Days.Monday: return "Mon"
+            case Days.Tuesday: return "Tue"
+            case Days.Wednesday: return "Wed"
+            case Days.Thursday: return "Thu"
+            case Days.Friday: return "Fri"
+            case Days.Saturday: return "Sat"
+            case Days.Sunday: return "Sun"
+        }
+    }
+
+    addToSchedule(Days.Monday, Slots.First, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Monday, Slots.Second, Tasks.Trading, Rewards.Medals)
+    addToSchedule(Days.Monday, Slots.Third, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Monday, Slots.Fourth, Tasks.KillZombi, Rewards.Medals)
+
+    addToSchedule(Days.Tuesday, Slots.First, Tasks.KillZombi, Rewards.Medals)
+    addToSchedule(Days.Tuesday, Slots.Second, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Tuesday, Slots.Third, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Tuesday, Slots.Fourth, Tasks.Trading, Rewards.Medals)
+
+    addToSchedule(Days.Wednesday, Slots.First, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Wednesday, Slots.Second, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Wednesday, Slots.Third, Tasks.Trading, Rewards.Medals)
+    addToSchedule(Days.Wednesday, Slots.Fourth, Tasks.KillZombi, Rewards.Medals)
+
+    addToSchedule(Days.Thursday, Slots.First, Tasks.Trading, Rewards.Medals)
+    addToSchedule(Days.Thursday, Slots.Second, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Thursday, Slots.Third, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Thursday, Slots.Fourth, Tasks.KillZombi, Rewards.Medals)
+
+    addToSchedule(Days.Friday, Slots.First, Tasks.KillMutatedZombi, Rewards.Coins)
+    addToSchedule(Days.Friday, Slots.Second, Tasks.Gathering, Rewards.Recruitment)
+    addToSchedule(Days.Friday, Slots.Third, Tasks.KillZombi, Rewards.Medals)
+    addToSchedule(Days.Friday, Slots.Fourth, Tasks.Trading, Rewards.Medals)
+
+    addToSchedule(Days.Saturday, Slots.First, Tasks.KillSoldiers, Rewards.Gears)
+    addToSchedule(Days.Saturday, Slots.Second, Tasks.KillSoldiers, Rewards.Coins)
+    addToSchedule(Days.Saturday, Slots.Third, Tasks.KillSoldiers, Rewards.Gears)
+    addToSchedule(Days.Saturday, Slots.Fourth, Tasks.KillSoldiers, Rewards.Coins)
+
+    addToSchedule(Days.Sunday, Slots.First, Tasks.KillSoldiers, Rewards.Coins)
+    addToSchedule(Days.Sunday, Slots.Second, Tasks.KillSoldiers, Rewards.Gears)
+    addToSchedule(Days.Sunday, Slots.Third, Tasks.KillSoldiers, Rewards.Coins)
+    addToSchedule(Days.Sunday, Slots.Fourth, Tasks.KillSoldiers, Rewards.Gears)
+
+    function getGameTime() {
+        return timeToGameTime(new Date());
+    }
+
+    function timeToGameTime(localDate) {
+        const offset = -2 // Game is UTC(-2)
+        const utcTime = localDate.getTime() + (localDate.getTimezoneOffset() * 60000)
+        const gameTime = utcTime + (3600000 * offset)
+        const gameDate = new Date(gameTime);
+        return gameDate;
+    }
+
+    function gameTimeToTime(gameTime) {
+        const offset = -2 // Game is UTC(-2)
+        const utcTime = gameTime.getTime() - 3600000 * offset
+        const localTime = utcTime - (gameTime.getTimezoneOffset() * 60000)
+        return new Date(localTime)
+    }
+
+    function getDayOfTheWeek(gameDate) {
+        switch (gameDate.getDay()) {
+            case 0: return Days.Sunday
+            case 1: return Days.Monday
+            case 2: return Days.Tuesday
+            case 3: return Days.Wednesday
+            case 4: return Days.Thursday
+            case 5: return Days.Friday
+            case 6: return Days.Saturday
+        }
+    }
+
+    function getSlot(gameDate) {
+        const hours = gameDate.getHours()
+        if (hours < 6) return Slots.First
+        if (hours < 12) return Slots.Second
+        if (hours < 18) return Slots.Third
+        return Slots.Fourth
+    }
+
+    function secondsToHMS(value) {
+        const seconds = value % 60
+        value = (value - seconds) / 60
+        const minutes = value % 60
+        value = (value - minutes) / 60
+        const hours = value
+        return [hours, minutes, seconds]
+    }
+
+    function getElapsedTimeInSeconds(gameTime) {
+        const hours = gameTime.getHours() % 6
+        const minutes = gameTime.getMinutes()
+        const seconds = gameTime.getSeconds()
+        return hours * 60 * 60 + minutes * 60 + seconds
+    }
+
+    function getFromStartOfDayInSeconds(gameTime) {
+        const hours = gameTime.getHours()
+        const minutes = gameTime.getMinutes()
+        const seconds = gameTime.getSeconds()
+        return hours * 60 * 60 + minutes * 60 + seconds
+    }
+
+    function getRemainingTime(gameTime) {
+        const elapsed = getElapsedTimeInSeconds(gameTime)
+        const remaing = 6 * 60 * 60 - elapsed
+
+        return secondsToHMS(remaing)
+    }
+
+    function updateSchedule(secondsFromStartOfTheDay, currentDay) {
+        for (const item of Schedule) {
+            const { day, slot, task, reward, taskShowTimerFromStartOfTheWeek, taskStartFromStartOfTheWeek, taskEndFromStartOfTheWeek } = item
+            const diffDay = (day-currentDay) >= 0 ? (day-currentDay) : (day-currentDay) + 7
+
+            item.taskShowTimerFromStartOfTheCurrentDay = diffDay * 24 * 60 * 60 + (slot - 3) * 6 * 60 * 60
+            item.taskStartFromStartOfTheCurrentDay = diffDay * 24 * 60 * 60 + slot * 6 * 60 * 60
+            item.taskEndFromStartOfTheCurrentDay = diffDay * 24 * 60 * 60 + (slot + 1) * 6 * 60 * 60
+
+            const status = getTaskStatus(secondsFromStartOfTheDay, item.taskShowTimerFromStartOfTheCurrentDay, item.taskStartFromStartOfTheCurrentDay, item.taskEndFromStartOfTheCurrentDay)
+            item.status = status
+        }
+    }
+
+    function getRows(currentDay) {
+        const index = Schedule.findIndex(x => x.day === currentDay)
+        return [ 
+            ...Schedule.slice(index, Schedule.length),
+            ...Schedule.slice(0, index), 
+        ]
+    }
+
+
+
+    const MSECONDS_IN_DAY = 24 * 60 * 60 * 1000
+    const MSECONDS_IN_HOUR = 60 * 60 * 1000
+
+    function currentDayStartDate(gameDate) {
+        let time = gameDate.getTime()
+
+        time -= gameDate.getHours() * 60 * 60 * 1000
+        time -= gameDate.getMinutes() * 60 * 1000
+        time -= gameDate.getSeconds() * 1000
+
+        //time -= 1000
+
+        return new Date(time)
+    }
+
+    function getMondayStartDate(gameDate) {
+        let time = gameDate.getTime()
+
+        switch (gameDate.getDay()) {
+            case 1: time -= 0 * MSECONDS_IN_DAY; break; // Days.Monday
+            case 2: time -= 1 * MSECONDS_IN_DAY; break; // Days.Tuesday
+            case 3: time -= 2 * MSECONDS_IN_DAY; break; // Days.Wednesday
+            case 4: time -= 3 * MSECONDS_IN_DAY; break; // Days.Thursday
+            case 5: time -= 4 * MSECONDS_IN_DAY; break; // Days.Friday
+            case 6: time -= 5 * MSECONDS_IN_DAY; break; // Days.Saturday
+            case 0: time -= 6 * MSECONDS_IN_DAY; break; // Days.Sunday
+        }
+
+        time -= gameDate.getHours() * 60 * 60 * 1000
+        time -= gameDate.getMinutes() * 60 * 1000
+        time -= gameDate.getSeconds() * 1000
+
+        //time -= 1000
+
+        return new Date(time)
+    }
+
+    function formatHMS([hours, minutes, seconds]) {
+        return [
+            hours,
+            `${minutes}`.padStart(2, "0"),
+            `${seconds}`.padStart(2, "0")
+        ].join(":")
+    }
+
+    function formatDate(date) {
+        return `${date.getDate()}.${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
+    }
+
+    function getTaskStatus(currentTime, timerTime, startTime, endTime) {
+        if (currentTime < timerTime) return +2
+        if (currentTime < startTime) return +1
+        if (currentTime > endTime) return -1
+        return 0
+    }
+
+    function App(props) {
+        const [gameTime, setGameTime] = useState(getGameTime())
+
+        const currentDay = getDayOfTheWeek(gameTime)
+        const secondsFromStartOfTheDay = getFromStartOfDayInSeconds(gameTime)
+        const secondsFromStartOfTheWeek = secondsFromStartOfTheDay + currentDay * 24 * 60 * 60
+
+        updateSchedule(secondsFromStartOfTheDay, currentDay)
+        const [highlighted, setHighlighted] = useState(Schedule.find(x => x.status === 0))
+
+        useEffect(() => {
+            const interval = setInterval(() => {
+                setGameTime(getGameTime())
+            }, 1000)
+            return () => {
+                clearInterval(interval)
+            }
+        })
+
+
+
+     
+
+        const remaing = getRemainingTime(gameTime)
+
+        const mondayStartOfTheDay = getMondayStartDate(gameTime)
+        const currentDayStartOfTheDay = currentDayStartDate(gameTime)
+
+
+        return h('div', {}, [
+            h("div", null, ["Game (server) time: ", gameTime.toLocaleString("Ru-ru")]),
+            //h("div", null, mondayStartOfTheDay.toLocaleString()),
+            //h("span", null, gameTimeToTime(gameTime).toLocaleString()),
+
+            h("div", {
+                style: {
+                    "display": "grid",
+                    "grid-template-columns": "60px 1fr 1fr 1fr 1fr 1fr 1fr 1fr",
+                    "grid-template-rows": "30px 60px 60px 60px 60px",
+                    "gap": "5px",
+                    "grid-auto-rows": "38px",
+                    "grid-gap": "1px",
+                    margin: "20px"
+                }
+            }, [
+                h("div", { style: { gridRow: 2, gridColumn: 1 } }, [ "0-6" ]),
+                h("div", { style: { gridRow: 3, gridColumn: 1 } }, [ "6-12" ]),
+                h("div", { style: { gridRow: 4, gridColumn: 1 } }, [ "12-18" ]),
+                h("div", { style: { gridRow: 5, gridColumn: 1 } }, [ "18-24" ]),
+
+                h("div", { style: { gridRow: 1, gridColumn: 2 } }, [ "Mon" ]),
+                h("div", { style: { gridRow: 1, gridColumn: 3 } }, [ "Tue" ]),
+                h("div", { style: { gridRow: 1, gridColumn: 4 } }, [ "Wed" ]),
+                h("div", { style: { gridRow: 1, gridColumn: 5 } }, [ "Thu" ]),
+                h("div", { style: { gridRow: 1, gridColumn: 6 } }, [ "Fri" ]),
+                h("div", { style: { gridRow: 1, gridColumn: 7 } }, [ "Sat" ]),
+                h("div", { style: { gridRow: 1, gridColumn: 8 } }, [ "Sun" ]),
+
+                ...Schedule.map(function (item) {
+                    const { status, day, slot, task, reward, taskShowTimerFromStartOfTheWeek, taskStartFromStartOfTheWeek, taskEndFromStartOfTheWeek } = item
+                    const isActive = status === 0
+
+                    return h("div", {
+                        onClick() {
+                            setHighlighted(item)
+                        },
+                        style: { 
+                            background: isActive ? "green" : undefined,
+                            gridRow: 2 + slot, 
+                            gridColumn: 2 + day, 
+                            padding: "3.5px", 
+                            fontSize: "smaller", 
+                            "box-shadow": item === highlighted ? "0px 0px 20px 0px rgba(0, 0, 140, 0.6) inset"  : "0px 0px 10px 0px rgba(34, 60, 80, 0.2) inset" 
+                        }
+                    }, [ task ])
+                })
+            ]),
+
+            //h("pre", { style: { height: "150px" } }, [
+            //    "Highligted ",
+            //    JSON.stringify(highlighted, null, 4)
+            //]),
+
+            h('table', null, [
+                h("tr", null, [
+                    h("th", null, "Day"),
+                    h("th", null, ""),
+                    //h("th", null, "Слот"),
+                    h("th", null, "Task"),
+                    h("th", null, "Reward"),
+                ]),
+                ...getRows(currentDay).map(function (item) {
+                    const { status, day, slot, task, reward, taskShowTimerFromStartOfTheWeek, taskStartFromStartOfTheWeek, taskEndFromStartOfTheWeek } = item
+
+                    const isActive = status === 0
+                    const isOver = status === -1
+                    const isFutureToday = status === 1
+                    const isFutureNextDays = status === 2
+
+                    const waitingTime = secondsToHMS(item.taskStartFromStartOfTheCurrentDay - secondsFromStartOfTheDay)
+                    const startGameDate = new Date(currentDayStartOfTheDay.getTime() + item.taskStartFromStartOfTheCurrentDay * 1000)
+
+                    return h("tr", { 
+                        style: { 
+                            background: isActive ? "green" : undefined,
+                            "box-shadow": item === highlighted ? "0px 0px 10px 0px rgba(0, 0, 140, 0.6)" : undefined
+                        },
+                        onClick() {
+                            setHighlighted(item)
+                        },
+                    }, [
+                        h("td", null, formatDay(day)),
+                        h("td", null, [
+                            isOver ? "Завершено" : null,
+                            isActive ? "Закончится через " + formatHMS(remaing) : null,
+                            isFutureToday ? "Начнется через " + formatHMS(waitingTime) : null,
+                            isFutureNextDays ? formatDate(gameTimeToTime(startGameDate)) : null
+                        ]),
+                        //h("td", null, slot + 1),
+                        h("td", null, task),
+                        h("td", null, reward),
+                    ])
+                })
+            ]),
+
+            h("div", null, "By: [SE1] FeanorX (Server : 607)")
+        ]);
+    }
+
+    render(h(App), document.body);
+</script>
