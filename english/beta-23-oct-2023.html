@@ -371,9 +371,9 @@
                     }, [
                         h("td", null, formatDay(day)),
                         h("td", null, [
-                            isOver ? "Завершено" : null,
-                            isActive ? "Закончится через " + formatHMS(remaing) : null,
-                            isFutureToday ? "Начнется через " + formatHMS(waitingTime) : null,
+                            isOver ? "Completed" : null,
+                            isActive ? "Remainig time: " + formatHMS(remaing) : null,
+                            isFutureToday ? "Starts in: " + formatHMS(waitingTime) : null,
                             isFutureNextDays ? formatDate(gameTimeToTime(startGameDate)) : null
                         ]),
                         //h("td", null, slot + 1),
